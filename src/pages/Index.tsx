@@ -6,6 +6,7 @@ import { DashboardCharts } from "@/components/DashboardCharts";
 import { generateUsers, travelZones, User } from "@/data/sampleData";
 import { RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import UserHeader from "@/components/UserHeader";
 
 const Index = () => {
   const [users, setUsers] = useState<User[]>([]);
@@ -41,15 +42,18 @@ const Index = () => {
                 Real-time travel group monitoring • Last updated: {lastUpdated.toLocaleTimeString()}
               </p>
             </div>
-            <Button 
-              onClick={handleRefresh}
-              variant="outline"
-              size="sm"
-              className="flex items-center gap-2"
-            >
-              <RefreshCw className="h-4 w-4" />
-              Refresh
-            </Button>
+            <div className="flex items-center gap-4">
+              <UserHeader />
+              <Button 
+                onClick={handleRefresh}
+                variant="outline"
+                size="sm"
+                className="flex items-center gap-2"
+              >
+                <RefreshCw className="h-4 w-4" />
+                Refresh
+              </Button>
+            </div>
           </div>
         </div>
       </header>

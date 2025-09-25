@@ -1,213 +1,392 @@
-import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { Eye, EyeOff, Shield, Lock } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Eye, EyeOff, Shield, AlertTriangle, UserPlus } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const loginSchema = z.object({
-  policeId: z.string().min(1, "Police ID is required").min(3, "Police ID must be at least 3 characters"),
-  password: z.string().min(1, "Password is required").min(6, "Password must be at least 6 characters"),
+  email: z.string().email("Please enter a valid email address"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
   rememberMe: z.boolean().default(false),
 });
 
+const signupSchema = z.object({
+  email: z.string().email("Please enter a valid email address"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+  policeId: z.string().min(3, "Police ID must be at least 3 characters"),
+  fullName: z.string().min(2, "Full name is required"),
+  rank: z.string().optional(),
+});
+
 type LoginFormData = z.infer<typeof loginSchema>;
+type SignupFormData = z.infer<typeof signupSchema>;
 
 const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
-  const { toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { signIn, signUp, user } = useAuth();
+  const navigate = useNavigate();
 
-  const form = useForm<LoginFormData>({
+  // Redirect if already logged in
+  useEffect(() => {
+    if (user) {
+      navigate('/');
+    }
+  }, [user, navigate]);
+
+  const loginForm = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      policeId: "",
+      email: "",
       password: "",
       rememberMe: false,
     },
   });
 
-  const onSubmit = async (data: LoginFormData) => {
-    try {
-      // Placeholder for backend integration
-      console.log("Login attempt:", { ...data, password: "[REDACTED]" });
-      
-      // Simulate API call
-      const response = await fetch("/api/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(data),
-      });
+  const signupForm = useForm<SignupFormData>({
+    resolver: zodResolver(signupSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+      policeId: "",
+      fullName: "",
+      rank: "Officer",
+    },
+  });
 
-      if (response.ok) {
+  const onLogin = async (data: LoginFormData) => {
+    setIsSubmitting(true);
+    try {
+      const { error } = await signIn(data.email, data.password);
+      
+      if (error) {
+        toast({
+          title: "Login Failed",
+          description: error.message || "Invalid credentials. Please try again.",
+          variant: "destructive",
+        });
+      } else {
         toast({
           title: "Login Successful",
-          description: "Welcome to the Smart Tourist Safety Monitoring System",
+          description: "Welcome back, Officer!",
         });
-        // Redirect to dashboard would happen here
-        window.location.href = "/";
-      } else {
-        throw new Error("Invalid credentials");
+        navigate('/');
       }
     } catch (error) {
       toast({
-        title: "Login Failed",
-        description: "Invalid Police ID or password. Please try again.",
+        title: "Error",
+        description: "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const onSignup = async (data: SignupFormData) => {
+    setIsSubmitting(true);
+    try {
+      const { error } = await signUp(data.email, data.password, data.policeId, data.fullName, data.rank);
+      
+      if (error) {
+        toast({
+          title: "Registration Failed",
+          description: error.message || "Failed to create account. Please try again.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Registration Successful",
+          description: "Account created successfully! Please check your email to verify your account.",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      {/* Background Pattern */}
-      <div className="absolute inset-0 bg-gradient-to-br from-background via-card to-background opacity-50" />
-      
-      <div className="relative w-full max-w-md">
-        <Card className="border-border/50 shadow-elevated bg-gradient-to-b from-card to-card/50 backdrop-blur-sm">
-          <CardHeader className="text-center space-y-4">
-            {/* Logo Section */}
-            <div className="flex flex-col items-center space-y-3">
-              <div className="p-3 rounded-full bg-primary/10 border border-primary/20">
-                <Shield className="w-8 h-8 text-primary" />
-              </div>
-              <div className="space-y-1">
-                <h1 className="text-lg font-semibold text-primary">Smart India Hackathon 2025</h1>
-                <p className="text-sm text-muted-foreground font-medium">IDEA HACKERS</p>
-              </div>
-            </div>
-            
-            <div className="space-y-2">
-              <CardTitle className="text-2xl font-bold text-foreground">Police Dashboard</CardTitle>
-              <CardDescription className="text-muted-foreground">
-                Smart Tourist Safety Monitoring & Incident Response System
-              </CardDescription>
-            </div>
-          </CardHeader>
+    <div className="min-h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-indigo-900 flex items-center justify-center p-4">
+      <div className="w-full max-w-md space-y-6">
+        <div className="text-center">
+          <Shield className="mx-auto h-12 w-12 text-blue-200 mb-4" />
+          <h1 className="text-3xl font-bold text-white mb-2">
+            Smart Tourist Safety
+          </h1>
+          <p className="text-blue-200">Monitoring System</p>
+        </div>
 
-          <CardContent className="space-y-6">
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                {/* Police ID Field */}
-                <FormField
-                  control={form.control}
-                  name="policeId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-foreground">Police ID</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Input
-                            {...field}
-                            type="text"
-                            placeholder="Enter your Police ID"
-                            className="pl-10 bg-input border-border focus:border-primary focus:ring-primary/20"
-                          />
-                          <Shield className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+        <Card className="bg-white/10 border-white/20 backdrop-blur-sm">
+          <Tabs defaultValue="login" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 bg-white/10 border-white/20">
+              <TabsTrigger value="login" className="text-white data-[state=active]:bg-blue-600 data-[state=active]:text-white">
+                Login
+              </TabsTrigger>
+              <TabsTrigger value="signup" className="text-white data-[state=active]:bg-blue-600 data-[state=active]:text-white">
+                Register
+              </TabsTrigger>
+            </TabsList>
 
-                {/* Password Field */}
-                <FormField
-                  control={form.control}
-                  name="password"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-foreground">Password</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Input
-                            {...field}
-                            type={showPassword ? "text" : "password"}
-                            placeholder="Enter your password"
-                            className="pl-10 pr-10 bg-input border-border focus:border-primary focus:ring-primary/20"
-                          />
-                          <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                          <button
-                            type="button"
-                            onClick={() => setShowPassword(!showPassword)}
-                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                          >
-                            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                          </button>
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+            <TabsContent value="login">
+              <CardHeader>
+                <CardTitle className="text-white text-center">Officer Login</CardTitle>
+                <CardDescription className="text-blue-200 text-center">
+                  Enter your credentials to access the monitoring dashboard
+                </CardDescription>
+              </CardHeader>
+              <Form {...loginForm}>
+                <form onSubmit={loginForm.handleSubmit(onLogin)}>
+                  <CardContent className="space-y-4">
+                    <FormField
+                      control={loginForm.control}
+                      name="email"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-white">Email</FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              type="email"
+                              placeholder="Enter your email"
+                              className="bg-white/10 border-white/20 text-white placeholder:text-blue-200"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-                {/* Remember Me & Forgot Password */}
-                <div className="flex items-center justify-between">
-                  <FormField
-                    control={form.control}
-                    name="rememberMe"
-                    render={({ field }) => (
-                      <FormItem className="flex items-center space-x-2 space-y-0">
-                        <FormControl>
-                          <Checkbox
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                            className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-                          />
-                        </FormControl>
-                        <Label className="text-sm text-muted-foreground cursor-pointer">
-                          Remember me
-                        </Label>
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <button
-                    type="button"
-                    className="text-sm text-primary hover:text-primary/80 transition-colors"
-                    onClick={() => {
-                      toast({
-                        title: "Password Recovery",
-                        description: "Please contact your system administrator for password reset.",
-                      });
-                    }}
-                  >
-                    Forgot Password?
-                  </button>
-                </div>
+                    <FormField
+                      control={loginForm.control}
+                      name="password"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-white">Password</FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                              <Input
+                                {...field}
+                                type={showPassword ? "text" : "password"}
+                                placeholder="Enter your password"
+                                className="bg-white/10 border-white/20 text-white placeholder:text-blue-200 pr-10"
+                              />
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                                onClick={() => setShowPassword(!showPassword)}
+                              >
+                                {showPassword ? (
+                                  <EyeOff className="h-4 w-4 text-blue-200" />
+                                ) : (
+                                  <Eye className="h-4 w-4 text-blue-200" />
+                                )}
+                              </Button>
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-                {/* Login Button */}
-                <Button
-                  type="submit"
-                  className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-2.5 transition-all duration-200 shadow-glow hover:shadow-lg"
-                  disabled={form.formState.isSubmitting}
-                >
-                  {form.formState.isSubmitting ? "Signing In..." : "Sign In"}
-                </Button>
-              </form>
-            </Form>
+                    <div className="flex items-center justify-between">
+                      <FormField
+                        control={loginForm.control}
+                        name="rememberMe"
+                        render={({ field }) => (
+                          <FormItem className="flex items-center space-x-2 space-y-0">
+                            <FormControl>
+                              <Checkbox
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                                className="border-white/20 data-[state=checked]:bg-blue-600"
+                              />
+                            </FormControl>
+                            <FormLabel className="text-sm text-blue-200">
+                              Remember me
+                            </FormLabel>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </CardContent>
+                  <CardFooter className="flex flex-col space-y-4">
+                    <Button
+                      type="submit"
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                      disabled={isSubmitting}
+                    >
+                      {isSubmitting ? "Signing In..." : "Sign In"}
+                    </Button>
+                  </CardFooter>
+                </form>
+              </Form>
+            </TabsContent>
 
-            {/* Security Notice */}
-            <div className="text-center">
-              <p className="text-xs text-muted-foreground">
-                Authorized personnel only. All activities are monitored and logged.
-              </p>
-            </div>
-          </CardContent>
+            <TabsContent value="signup">
+              <CardHeader>
+                <CardTitle className="text-white text-center">Officer Registration</CardTitle>
+                <CardDescription className="text-blue-200 text-center">
+                  Create a new account for the monitoring system
+                </CardDescription>
+              </CardHeader>
+              <Form {...signupForm}>
+                <form onSubmit={signupForm.handleSubmit(onSignup)}>
+                  <CardContent className="space-y-4">
+                    <FormField
+                      control={signupForm.control}
+                      name="fullName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-white">Full Name</FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              type="text"
+                              placeholder="Enter your full name"
+                              className="bg-white/10 border-white/20 text-white placeholder:text-blue-200"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={signupForm.control}
+                      name="policeId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-white">Police ID</FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              type="text"
+                              placeholder="Enter your Police ID"
+                              className="bg-white/10 border-white/20 text-white placeholder:text-blue-200"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={signupForm.control}
+                      name="rank"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-white">Rank</FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              type="text"
+                              placeholder="Officer, Sergeant, Lieutenant, etc."
+                              className="bg-white/10 border-white/20 text-white placeholder:text-blue-200"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={signupForm.control}
+                      name="email"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-white">Email</FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              type="email"
+                              placeholder="Enter your email"
+                              className="bg-white/10 border-white/20 text-white placeholder:text-blue-200"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={signupForm.control}
+                      name="password"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-white">Password</FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                              <Input
+                                {...field}
+                                type={showPassword ? "text" : "password"}
+                                placeholder="Create a password"
+                                className="bg-white/10 border-white/20 text-white placeholder:text-blue-200 pr-10"
+                              />
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                                onClick={() => setShowPassword(!showPassword)}
+                              >
+                                {showPassword ? (
+                                  <EyeOff className="h-4 w-4 text-blue-200" />
+                                ) : (
+                                  <Eye className="h-4 w-4 text-blue-200" />
+                                )}
+                              </Button>
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </CardContent>
+                  <CardFooter className="flex flex-col space-y-4">
+                    <Button
+                      type="submit"
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                      disabled={isSubmitting}
+                    >
+                      {isSubmitting ? "Creating Account..." : "Create Account"}
+                    </Button>
+                  </CardFooter>
+                </form>
+              </Form>
+            </TabsContent>
+          </Tabs>
         </Card>
 
-        {/* Footer */}
-        <div className="text-center mt-6">
-          <p className="text-xs text-muted-foreground">
-            Smart Tourist Safety Monitoring System v1.0
-          </p>
+        <div className="bg-orange-500/20 border border-orange-500/30 rounded-lg p-4 backdrop-blur-sm">
+          <div className="flex items-start space-x-3">
+            <AlertTriangle className="h-5 w-5 text-orange-400 mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="text-sm text-orange-200 font-medium mb-1">
+                Security Notice
+              </p>
+              <p className="text-xs text-orange-300">
+                This system is for authorized personnel only. All access attempts are logged and monitored.
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
